@@ -9,7 +9,7 @@ GCC=gcc
 #ARCH_FLAGS="-arch=sm_86"
 CFLAGS="-Iinclude -DPHI=${PHI} -DRC=${RC} -DN=${N}"
 LDFLAGS="-lGL -lGLU -lglut -lm"
-SRC="main.c src/system.c"
+SRC="main.c src/system.c src/random.c"
 OUT="main"
 
 echo "Compilando con PHI=${PHI}, DRC=${RC}, N=${N}"
