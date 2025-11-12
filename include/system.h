@@ -23,33 +23,38 @@ typedef struct {
 
     // state of each particle
     double *x;
+    double *x0;
     int *index;
     int *state;
 
     cell *cellList;
 
-    // System vectors
+    // SystemSI vectors
     int *neighborCell;
 
     
-    // System parameters
+    // SystemSI parameters
     double dt;
     double rc;
+    double alpha;
     double cellSize;
     int nCells;
     int d;
     int z;
 
-} system;
+} systemSI;
 
 
-system *makeSystem(double, double, int, int);
-void destroySystem(system *);
+systemSI *makeSystem(double, double, double, int, int);
+void destroySystem(systemSI *, int);
 
-void putParticles(system *);
-void initialState(system *);
+void putParticles(systemSI *);
+void initialState(systemSI *);
 
-void getCellIndex(system *);
+void getCellIndex(systemSI *);
+void getNeighborList(systemSI *);
 
+void iteration(systemSI *);
+void verifyParticlesInCells(systemSI *);
 
 #endif // __SYSTEM_H__
