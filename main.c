@@ -7,10 +7,10 @@
 #include <GL/glut.h>
 
 // Dimensión de las partículas en la visualización
-#define PARTICLE_RADIUS 0.3
+#define PARTICLE_RADIUS 0.2
 
 // Número de segmentos para dibujar círculos
-#define NUM_SEGMENTS 8
+#define NUM_SEGMENTS 16
 
 systemSI *pS = NULL;
 
@@ -50,11 +50,11 @@ void initOpenGL() {
 
     srand(time(NULL));
     seed_random(0);
-    
+
     double rc = RC;
-    double dt = 0.1;
-    double alpha = 0.5;
-    double sigma = 5.1;
+    double dt = 0.01;
+    double alpha = 5.0;
+    double sigma = 0.5;
     double d = 2;
     double z = 9;
 
@@ -62,6 +62,10 @@ void initOpenGL() {
 
     // TODO
     pS = makeSystem(rc, dt, alpha, sigma, d, z);
+
+    // DEBUG: Verifica que se guardó correctamente
+    printf("pS->dt = %f\n", pS->dt);
+
     setZoomForSystem();
 
     gluOrtho2D(zoomLeft, zoomRight, zoomBottom, zoomTop);
@@ -150,48 +154,47 @@ void drawParticles() {
     glPointSize(1.0f);
 }
 
-
-// Función para dibujar partículas como círculos (más lento pero mejor visualización)
 void drawParticlesAsCircles() {
-    
     int d = pS->d;
+    double L = L_BOX;
+
+    // Pre-cálculos de viewport (para evitar repetir)
+    double left = zoomLeft  - PARTICLE_RADIUS;
+    double right = zoomRight + PARTICLE_RADIUS;
+    double bottom = zoomBottom - PARTICLE_RADIUS;
+    double top = zoomTop + PARTICLE_RADIUS;
+
+    // shifts a probar en cada eje: -L, 0, +L
+    const double shifts[3] = { -L, 0.0, L };
 
     for (int i = 0; i < N; i++) {
-        double x = pS->x[d * i + 0];
-        double y = pS->x[d * i + 1];
+        // Centro "canónico" reducido al dominio [0,L)
+        double xc = fmod(pS->x[d * i + 0] + L, L);
+        double yc = fmod(pS->x[d * i + 1] + L, L);
+
         int state = pS->state[i];
+        if (state == 0) glColor3f(1.0f, 0.2f, 0.2f);
+        else           glColor3f(0.2f, 0.2f, 1.0f);
 
-        // Asignar color según el estado
-        if (state == 0) {
-            glColor3f(1.0f, 0.2f, 0.2f);  // Rojo brillante
-        } else {
-            glColor3f(0.2f, 0.2f, 1.0f);  // Azul
+        // Probar las 9 imágenes (3x3). Dibujar sólo la(s) que caen dentro del viewport.
+        for (int ix = 0; ix < 3; ix++) {
+            double sx = shifts[ix];
+            double xm = xc + sx;
+            // rápido chequeo de rejilla en x: si no hay intersección con viewport, saltar
+            if (xm < left || xm > right) continue;
+
+            for (int iy = 0; iy < 3; iy++) {
+                double sy = shifts[iy];
+                double ym = yc + sy;
+                if (ym < bottom || ym > top) continue;
+
+                // si llegamos aquí, (xm,ym) está dentro del rectángulo extendido del viewport
+                drawCircle((float)xm, (float)ym, (float)PARTICLE_RADIUS);
+            }
         }
-
-        drawCircle(x, y, PARTICLE_RADIUS);
     }
 }
 
-
-// Función para mostrar información estadística en consola
-void printStatistics() {
-    int count_state_0 = 0;
-    int count_state_1 = 0;
-
-    for (int i = 0; i < N; i++) {
-        if (pS->state[i] == 0) {
-            count_state_0++;
-        } else {
-            count_state_1++;
-        }
-    }
-
-    printf("\n=== ESTADÍSTICAS ===\n");
-    printf("Partículas estado 0 (rojo): %d (%.1f%%)\n", 
-           count_state_0, 100.0 * count_state_0 / N);
-    printf("Partículas estado 1 (azul): %d (%.1f%%)\n", 
-           count_state_1, 100.0 * count_state_1 / N);
-}
 
 
 // Función principal de visualización: modo 0
@@ -318,12 +321,7 @@ void update(int value){
     if(!pause){
        iteration(pS);
        getCellIndex(pS);
-
-       // DEBUG: Imprime posición de primera partícula cada 20 frames
-       static int frame_count = 0;
-       if (frame_count++ % 20 == 0) {
-           printf("Partícula 0: x=%.2f, y=%.2f\n", pS->x[0], pS->x[1]);
-       }
+       propagation(pS, 1.0, 0.5);
     }
 
     // Request the redraw of the scene by posting a redisplay event to GLUT
@@ -377,35 +375,9 @@ void keyboard(unsigned char key, int x, int y) {
             }
             break;
 
-        //case 't': // Print current simulation time
-        //    printf("Current time step: %lld\n", pN->time);
-        //    break;
-
-        // case 's': case 'S': // Save screenshot (BMP)
-        //    savingGIF = !savingGIF;
-        //    break;
-
         case 'p': case 'P': // Pause/resume simulation
             pause = !pause;
             break;
-        
-        //case 'n': // tecla 'n' avanza un paso si está en pausa
-        //    if(pause){
-        //        mcStep(pN);              // un único paso
-        //        glutPostRedisplay();   // forzar redibujado
-        //    }
-        //    break;
-        //case 'g': case 'G':
-        //    minimiza_CG(pN);
-        //    break;
-        
-        //case 'k': case 'K':
-        //    defor = !defor;
-        //    break;
-        
-        //case 'a': case 'A':
-        //    onlyAffin = !onlyAffin;
-        //    break;
 
         default:
             break;

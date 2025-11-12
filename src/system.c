@@ -11,6 +11,7 @@ systemSI *makeSystem(double rc, double dt, double alpha, double sigma, int d, in
     pS -> rc = rc;
     pS -> alpha = alpha;
     pS -> sigma = sigma;
+    pS -> dt = dt;
     pS -> nCells = N_BOX;
     pS -> cellSize = L_BOX / N_BOX;
     pS -> d = d;
@@ -32,8 +33,9 @@ systemSI *makeSystem(double rc, double dt, double alpha, double sigma, int d, in
     pS -> index = (int *)malloc(pS -> memoryIndex);
     assert(pS -> index != NULL);
 
-    pS -> state = (int *)malloc(pS -> memoryState);
-    assert(pS -> state != NULL);
+    pS -> state     = (int *)malloc(pS -> memoryState);
+    pS -> fakeState = (int *)malloc(pS -> memoryState);
+    assert(pS -> state != NULL && pS -> fakeState != NULL);
 
     initialState(pS);
 
@@ -67,6 +69,7 @@ void destroySystem(systemSI *pS) {
     free(pS->x0);
     free(pS->index);
     free(pS->state);
+    free(pS -> fakeState);
     free(pS->neighborCell);
 
     // Liberar listas de celdas
@@ -172,40 +175,28 @@ void getNeighborList(systemSI *pS) {
 void iteration(systemSI *pS) {
     int d = pS->d;
     double *x  = pS->x;
-    double *x0 = pS->x0;   // punto de equilibrio por partícula (según tu definición)
+    double *x0 = pS->x0;
     double dt = pS->dt;
     double alpha = pS->alpha;
     double sigma = pS->sigma;
     double L = L_BOX;
+    double size = 1.0 / L;
 
-    // Precalcula exponencial (estable)
+    // Parámetros del proceso de Ornstein-Uhlenbeck
     double exp_md = exp(-alpha * dt);
-    // varianza del término estocástico: sigma^2/(2 alpha) * (1 - exp(-2 alpha dt))
-    double var_factor;
-    if (alpha > 1e-14) {
-        // uso de exp(-2 alpha dt) directo; se puede usar expm1 para más precisión si dt*alpha pequeño
-        double tmp = 1.0 - exp(-2.0 * alpha * dt);
-        var_factor = sigma * sqrt(tmp / (2.0 * alpha));
-    } else {
-        // límite alpha -> 0: var -> sigma^2 * dt  => std = sigma * sqrt(dt)
-        var_factor = sigma * sqrt(dt);
-        exp_md = 1.0; // cuando alpha ~ 0 no hay decaimiento
-    }
+    double tmp = 1.0 - exp(-2.0 * alpha * dt);
+    double var_factor = sigma * sqrt(tmp / (2.0 * alpha));
 
     for (int idx = 0; idx < N; idx++) {
         for (int mu = 0; mu < d; mu++) {
             double cur = x[d * idx + mu];
-            double eq  = x0[d * idx + mu];               // x0 puede ser distinto por partícula
-            double z   = gasdev_mu_sigma(0.0, 1.0);      // N(0,1) estándar
+            double eq  = x0[d * idx + mu];
+            double z   = gasdev_mu_sigma(0.0, 1.0); // ruido gaussiano estándar
+
             double newx = eq + (cur - eq) * exp_md + var_factor * z;
 
-            // Condición periódica en [0, L)
-            if (newx < 0.0) {
-                // añadir múltiplos de L hasta entrar en rango (robusto si noise grande)
-                newx = newx - floor(newx / L) * L;
-            } else if (newx >= L) {
-                newx = newx - floor(newx / L) * L;
-            }
+            // Condiciones periódicas (sin saltos)
+            newx -= floor(newx * size) * L;
 
             x[d * idx + mu] = newx;
         }
@@ -213,23 +204,32 @@ void iteration(systemSI *pS) {
 }
 
 
-/*void iteration(systemSI *pS) {
-    int d = pS->d;
-    double *x  = pS->x;
+
+void propagation(systemSI *pS, double beta, double lambda) {
+    // Copia de estado actual
+    memcpy(pS->fakeState, pS->state, pS->memoryState);
+
+    int *state     = pS->state;
+    int *fakeState = pS->fakeState;
     double dt = pS->dt;
 
-    // TEST: Movimiento forzado simple
     for (int idx = 0; idx < N; idx++) {
-        for (int mu = 0; mu < d; mu++) {
-            x[d * idx + mu] += 0.5;  // Suma 0.5 cada frame
-            
-            // Condición periódica
-            if (x[d * idx + mu] >= L_BOX) {
-                x[d * idx + mu] -= L_BOX;
-            }
+        double r = uniform_pos();  // número aleatorio uniforme en [0,1)
+
+        if (state[idx] == 0) {
+            // Infectado -> Susceptible con tasa λ
+            fakeState[idx] = (r < lambda * dt) ? 1 : 0;
+        } else {
+            // Susceptible -> Infectado con tasa β
+            fakeState[idx] = (r < beta * dt) ? 0 : 1;
         }
     }
-}*/
+
+    // Actualiza el estado del sistema
+    memcpy(state, fakeState, pS->memoryState);
+}
+
+
 
 void verifyParticlesInCells(systemSI *pS) {
     printf("\n=== VERIFICACIÓN: PARTÍCULAS POR CELDA ===\n\n");

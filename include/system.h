@@ -26,6 +26,7 @@ typedef struct {
     double *x0;
     int *index;
     int *state;
+    int *fakeState;
 
     cell *cellList;
 
@@ -56,6 +57,7 @@ void getCellIndex(systemSI *);
 void getNeighborList(systemSI *);
 
 void iteration(systemSI *);
+void propagation(systemSI *, double, double);
 void verifyParticlesInCells(systemSI *);
 
 #endif // __SYSTEM_H__
