@@ -37,6 +37,7 @@ typedef struct {
     double dt;
     double rc;
     double alpha;
+    double sigma;
     double cellSize;
     int nCells;
     int d;
@@ -45,8 +46,8 @@ typedef struct {
 } systemSI;
 
 
-systemSI *makeSystem(double, double, double, int, int);
-void destroySystem(systemSI *, int);
+systemSI *makeSystem(double, double, double, double, int, int);
+void destroySystem(systemSI *);
 
 void putParticles(systemSI *);
 void initialState(systemSI *);
