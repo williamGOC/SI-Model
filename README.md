@@ -145,7 +145,7 @@ Three versions available in `system.c`:
 - **OpenGL** (visualization only): `GL/gl.h`, `GL/glu.h`, `GL/glut.h`
 
 ## Authors
-- Matheus ...
-- Marcelo H. Schwade (IFUSP)
-- Vinicius Menuci (IFT-UNESP)
+- Matheus L. F. Ribeiro (UFMG)
+- Marcelo H. Schwade (IB-USP)
+- Vinicius M. Muccillo (IFT-UNESP)
 - William G. C. Oropesa (ICTP-SAIFR)
