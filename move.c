@@ -344,7 +344,6 @@ int main(int argc, char **argv) {
     glutInitWindowSize(windowWidth, windowHeight);
     glutCreateWindow("Particle Simulation - SIS Epidemic Model");
 
-    system("mkdir -p frames"); // crea carpeta
     initOpenGL(argc, argv);
 
     // Register callback functions
