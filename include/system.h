@@ -57,7 +57,10 @@ void getCellIndex(systemSI *);
 void getNeighborList(systemSI *);
 
 void iteration(systemSI *);
-void propagation(systemSI *, double, double);
+void propagation_v00(systemSI *, double, double);
+void propagation_v01(systemSI *, double, double);
+void propagation_v02(systemSI *, double, double);
 void verifyParticlesInCells(systemSI *);
 
+double minImage(double, double);
 #endif // __SYSTEM_H__

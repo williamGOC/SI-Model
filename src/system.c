@@ -180,32 +180,40 @@ void iteration(systemSI *pS) {
     double alpha = pS->alpha;
     double sigma = pS->sigma;
     double L = L_BOX;
-    double size = 1.0 / L;
 
-    // Parámetros del proceso de Ornstein-Uhlenbeck
+    // Parámetros del proceso de Ornstein-Uhlenbeck (precalculados una sola vez)
     double exp_md = exp(-alpha * dt);
     double tmp = 1.0 - exp(-2.0 * alpha * dt);
     double var_factor = sigma * sqrt(tmp / (2.0 * alpha));
 
+    // Loop optimizado
     for (int idx = 0; idx < N; idx++) {
+        int base_idx = d * idx;
+        
         for (int mu = 0; mu < d; mu++) {
-            double cur = x[d * idx + mu];
-            double eq  = x0[d * idx + mu];
-            double z   = gasdev_mu_sigma(0.0, 1.0); // ruido gaussiano estándar
+            int pos = base_idx + mu;
+            
+            double cur = x[pos];
+            double eq  = x0[pos];
+            double z   = gasdev_mu_sigma(0.0, 1.0);
 
-            double newx = eq + (cur - eq) * exp_md + var_factor * z;
+            // Cálculo de nueva posición
+            double diff = minImage(cur, eq);
+            double newx = eq + diff * exp_md + var_factor * z;
 
-            // Condiciones periódicas (sin saltos)
-            newx -= floor(newx * size) * L;
+            // Condiciones periódicas optimizadas (estilo Pac-Man)
+            // Usamos fmod para mayor robustez
+            newx = fmod(newx, L);
+            if (newx < 0.0) newx += L;
 
-            x[d * idx + mu] = newx;
+            x[pos] = newx;
         }
     }
 }
 
 
 
-void propagation(systemSI *pS, double beta, double lambda) {
+void propagation_v00(systemSI *pS, double beta, double lambda) {
     // Copia de estado actual
     memcpy(pS->fakeState, pS->state, pS->memoryState);
 
@@ -229,6 +237,161 @@ void propagation(systemSI *pS, double beta, double lambda) {
     memcpy(state, fakeState, pS->memoryState);
 }
 
+
+void propagation_v01(systemSI *pS, double beta, double lambda) {
+
+    memcpy(pS -> fakeState, pS -> state, pS -> memoryState);
+    
+    int *state     = pS->state;
+    int *fakeState = pS->fakeState;
+    
+    double dt = pS->dt;
+    double rc = pS -> rc;
+    double L  = L_BOX;
+    
+    int d = pS -> d;
+    int z = pS -> z;
+    
+    double *x  = pS -> x;
+    int nCells = pS -> nCells;
+    
+    // Actualizar lista de celdas
+    getCellIndex(pS);
+    
+    for (int idx = 0; idx < N; idx++) {
+        double r = uniform_pos();
+        
+        if (state[idx] == 0) {
+            // Infectado -> Susceptible con tasa λ
+            fakeState[idx] = (r < lambda * dt) ? 1 : 0;
+        } else {
+            // Susceptible: contar vecinos infectados
+            int num_infected_neighbors = 0;
+            
+            double xi = x[d * idx + 0];
+            double yi = x[d * idx + 1];
+            
+            // Encontrar celda de la partícula i
+            int ix = ((int)(xi / pS -> cellSize)) % nCells;
+            int iy = ((int)(yi / pS -> cellSize)) % nCells;
+            
+            if (ix < 0) ix += nCells;
+            if (iy < 0) iy += nCells;
+            
+            int cellIdx = iy * nCells + ix;
+            
+            // Buscar solo en celdas vecinas
+            for (int n = 0; n < z; n++) {
+                int neighborCellIdx = pS->neighborCell[z * cellIdx + n];
+                
+                for (int p = 0; p < pS -> cellList[neighborCellIdx].nParticles; p++) {
+                    int jdx = pS -> cellList[neighborCellIdx].particleIndex[p];
+                    
+                    if (jdx == idx) continue;
+                    if (state[jdx] != 0) continue; // Solo infectados
+                    
+                    double xj = x[d * jdx + 0];
+                    double yj = x[d * jdx + 1];
+                    
+                    double dx = minImage(xi, xj);
+                    double dy = minImage(yi, yj);
+                    double dist_sq = dx*dx + dy*dy;
+                    
+                    if (dist_sq < rc*rc) {
+                        num_infected_neighbors++;
+                    }
+                }
+            }
+            
+            // Infección proporcional a vecinos infectados
+            double infection_prob = 1.0 - exp(-beta * num_infected_neighbors * dt);
+            fakeState[idx] = (r < infection_prob) ? 0 : 1;
+        }
+    }
+    
+    memcpy(state, fakeState, pS->memoryState);
+}
+
+
+void propagation_v02(systemSI *pS, double beta, double lambda) {
+    memcpy(pS->fakeState, pS->state, pS->memoryState);
+    
+    int *state     = pS->state;
+    int *fakeState = pS->fakeState;
+    double dt = pS->dt;
+    double rc = pS->rc;
+    int d = pS->d;
+    int z = pS->z;
+    double *x = pS->x;
+    int nCells = pS->nCells;
+    
+    // Actualizar lista de celdas
+    getCellIndex(pS);
+    
+    for (int idx = 0; idx < N; idx++) {
+        double r_random = uniform_pos();
+        
+        if (state[idx] == 0) {
+            // Infectado -> Susceptible con tasa β (recuperación)
+            fakeState[idx] = (r_random < beta * dt) ? 1 : 0;
+        } else {
+            // Susceptible: calcular probabilidad de NO infectarse (productoria)
+            double prob_no_infection = 1.0;
+            
+            double xi = x[d * idx + 0];
+            double yi = x[d * idx + 1];
+            
+            // Encontrar celda
+            int ix = ((int)(xi / pS->cellSize)) % nCells;
+            int iy = ((int)(yi / pS->cellSize)) % nCells;
+            if (ix < 0) ix += nCells;
+            if (iy < 0) iy += nCells;
+            int cellIdx = iy * nCells + ix;
+            
+            // Buscar vecinos infectados
+            for (int n = 0; n < z; n++) {
+                int neighborCellIdx = pS->neighborCell[z * cellIdx + n];
+                
+                for (int p = 0; p < pS->cellList[neighborCellIdx].nParticles; p++) {
+                    int jdx = pS->cellList[neighborCellIdx].particleIndex[p];
+                    
+                    if (jdx == idx) continue;
+                    if (state[jdx] != 0) continue; // Solo infectados
+                    
+                    double xj = x[d * jdx + 0];
+                    double yj = x[d * jdx + 1];
+                    
+                    double dx = minImage(xi, xj);
+                    double dy = minImage(yi, yj);
+                    double dist = sqrt(dx*dx + dy*dy);
+                    
+                    if (dist < rc) {
+                        // P(este vecino me infecta) = exp(-λ*r) * dt
+                        double p_infection_from_j = exp(-lambda * dist) * dt;
+                        
+                        // P(este vecino NO me infecta)
+                        double p_no_infection_from_j = 1.0 - p_infection_from_j;
+                        
+                        // Productoria
+                        prob_no_infection *= p_no_infection_from_j;
+                    }
+                }
+            }
+            
+            // P(infectarse) = 1 - P(no infectarse)
+            double infection_prob = 1.0 - prob_no_infection;
+            
+            fakeState[idx] = (r_random < infection_prob) ? 0 : 1;
+        }
+    }
+    
+    memcpy(state, fakeState, pS->memoryState);
+}
+
+double minImage(double xi, double xj){
+    double xij = xi - xj;
+    return xij - L_BOX * round(xij / L_BOX); 
+}
 
 
 void verifyParticlesInCells(systemSI *pS) {

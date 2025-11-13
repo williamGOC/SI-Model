@@ -31,6 +31,7 @@ GLint FPS = 20;     // Frames per second
 GLint viewMode = 0; // Toggle between display modes
 GLint pause = 1;    // Pause simulation
 GLint nView = 1;    // Number of views
+GLint gridView = 0;
 
 
 // Set zoom based on the network type
@@ -122,117 +123,48 @@ void drawCellGrid() {
 }
 
 
-// Función para dibujar todas las partículas
-void drawParticles() {
-    
-    int d = pS->d;
-    double cellSize = pS->cellSize;
-    int nCells = pS->nCells;
-
-    glPointSize(2.0f);
-    glBegin(GL_POINTS);
-
-    for (int i = 0; i < N; i++) {
-        double x = pS->x[d * i + 0];
-        double y = pS->x[d * i + 1];
-
-        // Asignar color según el estado
-        // Estado 0 = Rojo (infectado/activo)
-        // Estado 1 = Azul (susceptible)
-        int state = pS->state[i];
-        
-        if (state == 0) {
-            glColor3f(1.0f, 0.0f, 0.0f);  // Rojo
-        } else {
-            glColor3f(0.0f, 0.0f, 1.0f);  // Azul
-        }
-
-        glVertex2d(x, y);
-    }
-    
-    glEnd();
-    glPointSize(1.0f);
-}
-
 void drawParticlesAsCircles() {
     int d = pS->d;
     double L = L_BOX;
-
-    // Pre-cálculos de viewport (para evitar repetir)
-    double left = zoomLeft  - PARTICLE_RADIUS;
-    double right = zoomRight + PARTICLE_RADIUS;
-    double bottom = zoomBottom - PARTICLE_RADIUS;
-    double top = zoomTop + PARTICLE_RADIUS;
-
-    // shifts a probar en cada eje: -L, 0, +L
-    const double shifts[3] = { -L, 0.0, L };
-
+    double r = PARTICLE_RADIUS;
+    
     for (int i = 0; i < N; i++) {
-        // Centro "canónico" reducido al dominio [0,L)
-        double xc = fmod(pS->x[d * i + 0] + L, L);
-        double yc = fmod(pS->x[d * i + 1] + L, L);
-
+        double xc = pS->x[d * i + 0];
+        double yc = pS->x[d * i + 1];
         int state = pS->state[i];
-        if (state == 0) glColor3f(1.0f, 0.2f, 0.2f);
-        else           glColor3f(0.2f, 0.2f, 1.0f);
-
-        // Probar las 9 imágenes (3x3). Dibujar sólo la(s) que caen dentro del viewport.
-        for (int ix = 0; ix < 3; ix++) {
-            double sx = shifts[ix];
-            double xm = xc + sx;
-            // rápido chequeo de rejilla en x: si no hay intersección con viewport, saltar
-            if (xm < left || xm > right) continue;
-
-            for (int iy = 0; iy < 3; iy++) {
-                double sy = shifts[iy];
-                double ym = yc + sy;
-                if (ym < bottom || ym > top) continue;
-
-                // si llegamos aquí, (xm,ym) está dentro del rectángulo extendido del viewport
-                drawCircle((float)xm, (float)ym, (float)PARTICLE_RADIUS);
-            }
-        }
+        
+        if (state == 0)
+            glColor3f(1.0f, 0.2f, 0.2f); // rojo
+        else
+            glColor3f(0.2f, 0.2f, 1.0f); // azul
+        
+        // --- SOLO dibujo principal, SIN réplicas ---
+        drawCircle((float)xc, (float)yc, (float)r);
     }
 }
 
 
 
-// Función principal de visualización: modo 0
+
+
 void display_v00() {
-    
-    // Limpiar el buffer de color y profundidad
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glClear(GL_COLOR_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    // Dibujar grilla de celdas (opcional)
-    drawCellGrid();
+    // ==================================================================
+    // Dibujar enlaces activos
+    // ==================================================================
+    if (gridView) {
+        drawCellGrid();
+    }
 
-    // Dibujar partículas como puntos (rápido)
-    // drawParticles();
-
-    // O dibujar partículas como círculos (más lento pero más visible)
+    // ==================================================================
+    // Dibujar partículas (círculos con flechas)
+    // ==================================================================
     drawParticlesAsCircles();
 
-    // Dibujar legend (texto)
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    gluOrtho2D(0, 100, 0, 100);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-
-    glColor3f(1.0f, 0.2f, 0.2f);
-    glRasterPos2f(5, 95);
-    // Nota: glutBitmapCharacter requeriría más código para texto
-    // Por ahora simplemente omitimos la leyenda
-
-    glPopMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-
-    // Intercambiar buffers para mostrar el resultado
     glutSwapBuffers();
 }
 
@@ -320,8 +252,10 @@ void update(int value){
     // Perform a step in the pN simulation, if the simulation is not paused
     if(!pause){
        iteration(pS);
-       getCellIndex(pS);
-       propagation(pS, 1.0, 0.5);
+       
+       // propagation_v00(pS, 1.0, 0.5);
+       // propagation_v01(pS, 1.0, 0.5);
+       propagation_v02(pS, 1.0, 0.5);
     }
 
     // Request the redraw of the scene by posting a redisplay event to GLUT
@@ -377,6 +311,10 @@ void keyboard(unsigned char key, int x, int y) {
 
         case 'p': case 'P': // Pause/resume simulation
             pause = !pause;
+            break;
+
+        case 'g': case 'G': // Pause/resume simulation
+            gridView = !gridView;
             break;
 
         default:
