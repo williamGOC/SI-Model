@@ -141,5 +141,7 @@ Three versions available in `system.c`:
 [Add your license here]
 
 ## Authors
-
-- William G. C. Oropesa
+- Matheus ...
+- Marcelo H. Schwade (IFUSP)
+- Vinicius Menuci (IFT-UNESP)
+- William G. C. Oropesa (ICTP-SAIFR)
