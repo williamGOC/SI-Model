@@ -34,20 +34,20 @@ Particles move via an Ornstein-Uhlenbeck process:
 │   └── random.c          # Random number generators
 ├── move.c                # OpenGL visualization main
 ├── main.c                # Simple command-line main
-├── compile.sh            # Compilation script (with OpenGL)
-└── compile_main.sh       # Compilation script (no OpenGL)
+├── run_move.sh           # Compilation script (with OpenGL)
+└── run_main.sh           # Compilation script (no OpenGL)
 ```
 
 ## Compilation
 
 ### With OpenGL Visualization
 ```bash
-./compile.sh [PHI] [RC] [N] [ALPHA] [SIGMA] [DT] [BETA] [LAMBDA]
+./run_move.sh [PHI] [RC] [N] [ALPHA] [SIGMA] [DT] [BETA] [LAMBDA]
 ```
 
 ### Command-Line Only
 ```bash
-./compile_main.sh [PHI] [RC] [N] [ALPHA] [SIGMA] [DT] [BETA] [LAMBDA]
+./run_main.sh [PHI] [RC] [N] [ALPHA] [SIGMA] [DT] [BETA] [LAMBDA]
 ```
 
 ### Parameters
@@ -63,10 +63,10 @@ Particles move via an Ornstein-Uhlenbeck process:
 ### Examples
 ```bash
 # Use all defaults
-./compile.sh
+./run_move.sh
 
 # Custom parameters
-./compile.sh 0.9 2.5 1000 5.0 0.5 0.01 0.8 1.5
+./run_move.sh 0.9 2.5 1000 5.0 0.5 0.01 0.8 1.5
 ```
 
 ## Running the Simulation
