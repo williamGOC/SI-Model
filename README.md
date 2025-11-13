@@ -75,6 +75,7 @@ Particles move via an Ornstein-Uhlenbeck process:
 ```bash
 ./move
 ```
+
 <p align="center">
   <img src="salida.gif" alt="Simulación del modelo SIS" width="600">
 </p>
