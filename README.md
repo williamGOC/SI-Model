@@ -2,6 +2,10 @@
 
 A particle-based simulation of an SIS (Susceptible-Infected-Susceptible) epidemic model where particles move according to an Ornstein-Uhlenbeck process in a 2D periodic domain.
 
+
+> Practical activity for the **Physics of Biological Systems** minicourse at ICTP-SAIFR
+
+
 ## Overview
 
 This simulation combines:
