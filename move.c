@@ -33,36 +33,6 @@ GLint pause = 1;     // Pause/resume simulation
 GLint nView = 1;     // Number of available views
 GLint gridView = 0;  // Show/hide cell grid
 
-GLint frame_counter = 0;
-GLint getFrame = 0;
-GLint frame_stride = 1;  // guardar un frame cada 1 pasos
-
-void saveFrameToPPM(int frame) {
-    unsigned char *pixels = (unsigned char *)malloc(3 * windowWidth * windowHeight);
-    if (!pixels) {
-        fprintf(stderr, "Error: no se pudo reservar memoria para pixels.\n");
-        return;
-    }
-
-    // Leer los píxeles de la ventana actual
-    glReadBuffer(GL_FRONT);
-    glReadPixels(0, 0, windowWidth, windowHeight, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-
-    // Guardar en formato PPM (simple y sin compresión)
-    char filename[64];
-    sprintf(filename, "frames/frame_%05d.ppm", frame);
-    FILE *f = fopen(filename, "wb");
-    if (!f) {
-        fprintf(stderr, "Error: no se pudo abrir %s para escritura.\n", filename);
-        free(pixels);
-        return;
-    }
-
-    fprintf(f, "P6\n%d %d\n255\n", windowWidth, windowHeight);
-    fwrite(pixels, 3, windowWidth * windowHeight, f);
-    fclose(f);
-    free(pixels);
-}
 
 // Set initial zoom to fit the entire simulation box
 void setZoomForSystem() {
@@ -192,11 +162,6 @@ void display_v00() {
 
     // Draw particles
     drawParticlesAsCircles();
-
-    // guardar frames cada cierto número de pasos
-    if (frame_counter % frame_stride == 0 && getFrame)
-        saveFrameToPPM(frame_counter / frame_stride);
-    frame_counter++;
 
     glutSwapBuffers();
 }
@@ -341,10 +306,6 @@ void keyboard(unsigned char key, int x, int y) {
 
         case 'g': case 'G': // Toggle grid view
             gridView = !gridView;
-            break;
-        
-        case 'x': case 'X': // Toggle grid view
-            getFrame = !getFrame;
             break;
 
         default:
