@@ -66,7 +66,7 @@ Particles move via an Ornstein-Uhlenbeck process:
 ./run_move.sh
 
 # Custom parameters
-./run_move.sh 0.9 2.5 1000 5.0 0.5 0.01 0.8 1.5
+./run_move.sh 0.7 2.5 2500 5.0 0.5 0.01 0.8 1.5
 ```
 
 ## Running the Simulation
