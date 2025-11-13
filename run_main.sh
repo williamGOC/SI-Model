@@ -1,26 +1,39 @@
 #!/bin/bash
 
-# System parameters
-PHI=${1:-0.9}          # Density (not used yet, but kept for compatibility)
-RC=${2:-2.5}           # Cutoff radius
-N=${3:-1000}           # Number of particles
+# =======================================================
+# Compilation script for simple main (no OpenGL)
+# =======================================================
 
+# System parameters (with default values)
+PHI=${1:-0.9}      # Particle density
+RC=${2:-2.5}       # Cutoff radius for interactions
+N=${3:-1000}       # Number of particles
+ALPHA=${4:-5.0}    # OU process relaxation rate
+SIGMA=${5:-0.5}    # OU process noise strength
+DT=${6:-0.01}      # Time step
+BETA=${7:-0.5}     # Recovery rate (I -> S)
+LAMBDA=${8:-1.0}   # Spatial decay of infection
 
 # Compiler settings
 GCC=gcc
-CFLAGS="-Iinclude -DPHI=${PHI} -DRC=${RC} -DN=${N}"
+CFLAGS="-Iinclude -DPHI=${PHI} -DRC=${RC} -DN=${N} -DALPHA=${ALPHA} -DSIGMA=${SIGMA} -DDT=${DT} -DBETA=${BETA} -DLAMBDA=${LAMBDA}"
 LDFLAGS="-lm"
 
-# Source files
+# Source files and output
 SRC="main.c src/system.c src/random.c"
 OUT="main"
 
 # Display compilation parameters
 echo "# =========================================="
 echo "# Compilation parameters:"
-echo "# PHI    = ${PHI}"
-echo "# RC     = ${RC}"
-echo "# N      = ${N}"
+echo "# PHI    = ${PHI}    (density)"
+echo "# RC     = ${RC}     (cutoff radius)"
+echo "# N      = ${N}      (particles)"
+echo "# ALPHA  = ${ALPHA}  (OU relaxation)"
+echo "# SIGMA  = ${SIGMA}  (OU noise)"
+echo "# DT     = ${DT}     (time step)"
+echo "# BETA   = ${BETA}   (recovery rate)"
+echo "# LAMBDA = ${LAMBDA} (infection decay)"
 echo "# =========================================="
 echo ""
 
@@ -35,6 +48,7 @@ if [ $? -eq 0 ]; then
     echo "# =========================================="
     echo "# Compilation successful!"
     echo "# Run with: ./$OUT"
+    echo "# Redirect data: ./$OUT | grep -v '^#' > data.txt"
     echo "# =========================================="
 else
     echo ""

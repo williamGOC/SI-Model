@@ -25,15 +25,15 @@ int main() {
     
     // System parameters
     double rc = RC;        // Cutoff radius
-    double dt = 0.01;       // Time step
-    double alpha = 5.0;     // OU parameter
-    double sigma = 0.5;     // OU noise
-    int d = 2;              // Dimension
-    int z = 9;              // Number of neighbor cells
+    double dt = DT;       // Time step
+    double alpha = ALPHA;     // OU parameter
+    double sigma = SIGMA;     // OU noise
+    int d = DIM;              // Dimension
+    int z = COORDINATION;              // Number of neighbor cells
     
     // Epidemiological parameters
-    double beta = 0.5;      // Recovery rate (I -> S)
-    double lambda = 1.0;    // Spatial decay of infection
+    double beta = BETA;      // Recovery rate (I -> S)
+    double lambda = LAMBDA;    // Spatial decay of infection
     
     // Create system
     printf("# Creating system...\n");

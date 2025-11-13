@@ -9,25 +9,25 @@
 //   Random number utilities for C simulations
 // =======================================================
 
-// Inicializa el generador de números aleatorios
-// Si seed == 0, usa time(NULL)
+// Initialize random number generator (seed=0 uses time(NULL))
 void seed_random(unsigned int);
 
-// Devuelve un número uniforme en [0, 1)
+// Return uniform random number in [0, 1)
 double uniform_pos(void);
 
-// Devuelve un número uniforme en [a, b)
+// Return uniform random number in [a, b)
 double uniform_range(double, double);
 
-// Devuelve un número gaussiano con media 0 y varianza 1
+// Return Gaussian random number with mean=0 and variance=1
 double gasdev(void);
 
-// Devuelve un número gaussiano con media mu y desviación sigma
+// Return Gaussian random number with mean=mu and std=sigma
 double gasdev_mu_sigma(double, double);
 
-// Versión alternativa de uniform_pos basada en el generador de Park-Miller
+// Alternative uniform generator based on Park-Miller algorithm
 float rand2(long *);
 
+// Initialize Gaussian random number generator
 void seed_gasdev(unsigned int);
 
 #endif

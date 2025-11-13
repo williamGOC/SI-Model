@@ -2,77 +2,87 @@
 #include "random.h"
 #include "system.h"
 
+// Create and initialize the system with given parameters
 systemSI *makeSystem(double rc, double dt, double alpha, double sigma, int d, int z) {
 
-    // Memory allocation for a structure 'systemSI'
+    // Allocate memory for system structure
     systemSI *pS = (systemSI *)malloc(sizeof(systemSI));
     assert(pS != NULL);
 
-    pS -> rc = rc;
-    pS -> alpha = alpha;
-    pS -> sigma = sigma;
-    pS -> dt = dt;
-    pS -> nCells = N_BOX;
-    pS -> cellSize = L_BOX / N_BOX;
-    pS -> d = d;
-    pS -> z = z;
+    // Set system parameters
+    pS->rc = rc;
+    pS->alpha = alpha;
+    pS->sigma = sigma;
+    pS->dt = dt;
+    pS->nCells = N_BOX;
+    pS->cellSize = L_BOX / N_BOX;
+    pS->d = d;
+    pS->z = z;
 
-    pS -> memoryX = d * N * sizeof(double);
-    pS -> memoryIndex = N * sizeof(int);
-    pS -> memoryState = N * sizeof(int);
-    pS -> memoryNeighborCell = z * N_BOX * N_BOX * sizeof(int);
-    pS -> memoryCellList = N_BOX * N_BOX * sizeof(cell);
+    // Calculate memory sizes for arrays
+    pS->memoryX = d * N * sizeof(double);
+    pS->memoryIndex = N * sizeof(int);
+    pS->memoryState = N * sizeof(int);
+    pS->memoryNeighborCell = z * N_BOX * N_BOX * sizeof(int);
+    pS->memoryCellList = N_BOX * N_BOX * sizeof(cell);
 
-    pS -> x  = (double *)malloc(pS -> memoryX);
-    pS -> x0 = (double *)malloc(pS -> memoryX);
-    assert(pS -> x != NULL && pS -> x0 != NULL);
+    // Allocate position arrays
+    pS->x  = (double *)malloc(pS->memoryX);
+    pS->x0 = (double *)malloc(pS->memoryX);
+    assert(pS->x != NULL && pS->x0 != NULL);
 
+    // Initialize particle positions randomly
     putParticles(pS);
-    memcpy(pS -> x0, pS -> x, pS -> memoryX);
+    memcpy(pS->x0, pS->x, pS->memoryX);  // Copy to equilibrium positions
 
-    pS -> index = (int *)malloc(pS -> memoryIndex);
-    assert(pS -> index != NULL);
+    // Allocate index array
+    pS->index = (int *)malloc(pS->memoryIndex);
+    assert(pS->index != NULL);
 
-    pS -> state     = (int *)malloc(pS -> memoryState);
-    pS -> fakeState = (int *)malloc(pS -> memoryState);
-    assert(pS -> state != NULL && pS -> fakeState != NULL);
+    // Allocate state arrays
+    pS->state     = (int *)malloc(pS->memoryState);
+    pS->fakeState = (int *)malloc(pS->memoryState);
+    assert(pS->state != NULL && pS->fakeState != NULL);
 
+    // Set initial epidemic states
     initialState(pS);
 
-    pS -> neighborCell = (int *)malloc(pS -> memoryNeighborCell);
-    assert(pS -> neighborCell != NULL);
-
+    // Allocate and build neighbor cell list
+    pS->neighborCell = (int *)malloc(pS->memoryNeighborCell);
+    assert(pS->neighborCell != NULL);
     getNeighborList(pS);
 
-    pS -> cellList = (cell *)malloc(pS -> memoryCellList);
-    assert(pS -> cellList != NULL);
+    // Allocate cell list structure
+    pS->cellList = (cell *)malloc(pS->memoryCellList);
+    assert(pS->cellList != NULL);
 
+    // Initialize each cell
     for (int cellIdx = 0; cellIdx < N_BOX * N_BOX; cellIdx++) {
-        
-        pS -> cellList[cellIdx].nParticles = 0;
-        pS -> cellList[cellIdx].particleIndex = (int *)calloc(MAX_PARTICLES_PER_CELL, sizeof(int));
+        pS->cellList[cellIdx].nParticles = 0;
+        pS->cellList[cellIdx].particleIndex = (int *)calloc(MAX_PARTICLES_PER_CELL, sizeof(int));
     }
     
+    // Assign particles to cells
     getCellIndex(pS);
 
     return pS;
-
 }
 
 
+// Free all memory allocated for the system
 void destroySystem(systemSI *pS) {
     if (pS == NULL)
         return;
 
-    // Liberar vectores principales
+    // Free main arrays
     free(pS->x);
     free(pS->x0);
     free(pS->index);
     free(pS->state);
-    free(pS -> fakeState);
+    free(pS->fakeState);
     free(pS->neighborCell);
 
-    // Liberar listas de celdas
+    // Free cell list arrays
     if (pS->cellList != NULL) {
         for (int i = 0; i < pS->nCells * pS->nCells; i++) {
             free(pS->cellList[i].particleIndex);
@@ -82,11 +92,12 @@ void destroySystem(systemSI *pS) {
         pS->cellList = NULL;
     }
 
-    // Finalmente, liberar el sistema
+    // Free system structure
     free(pS);
 }
 
 
+// Initialize particle positions randomly in the box
 void putParticles(systemSI *pS) {
     int d = pS->d;
     for (int i = 0; i < N; i++) {
@@ -96,13 +107,14 @@ void putParticles(systemSI *pS) {
 }
 
 
-
+// Set initial epidemic state: all susceptible except one random infected
 void initialState(systemSI *pS) {
+    // All particles start as susceptible (state=1)
     for (int i = 0; i < N; i++) {
         pS->state[i] = 1;
     }
 
-    // Elegir aleatoriamente una partícula y ponerla en estado 0
+    // Choose one random particle to be infected (state=0)
     int j = (int)(((double)rand() / (double)RAND_MAX) * N);
     if (j < 0) j = 0;
     if (j >= N) j = N-1;
@@ -110,47 +122,48 @@ void initialState(systemSI *pS) {
 }
 
 
-
+// Assign particles to spatial cells based on their positions
 void getCellIndex(systemSI *pS) {
 
-    double *x = pS -> x;
-    double cellSize = pS -> cellSize;
-    int nCells = pS -> nCells;
-    int d = pS -> d;
+    double *x = pS->x;
+    double cellSize = pS->cellSize;
+    int nCells = pS->nCells;
+    int d = pS->d;
 
-    // PASO 1: Limpiar las celdas (resetear contador)
+    // Clear all cells
     for (int cellIdx = 0; cellIdx < nCells * nCells; cellIdx++) {
         pS->cellList[cellIdx].nParticles = 0;
     }
 
+    // Assign each particle to its cell
     for (int idx = 0; idx < N; idx++) {
 
         int ix = ((int)(x[d * idx + 0] / cellSize)) % nCells;
         int iy = ((int)(x[d * idx + 1] / cellSize)) % nCells;
 
-        // check
+        // Handle periodic boundary conditions
         if (ix < 0) ix += nCells;
         if (iy < 0) iy += nCells;
 
         int cellIdx = iy * nCells + ix;
 
-        // AGREGAR la partícula a la celda
-        int current_count = pS -> cellList[cellIdx].nParticles;
-        pS -> cellList[cellIdx].particleIndex[current_count] = idx;
+        // Add particle to cell
+        int current_count = pS->cellList[cellIdx].nParticles;
+        pS->cellList[cellIdx].particleIndex[current_count] = idx;
 
-        // INCREMENTAR el contador
-        pS -> cellList[cellIdx].nParticles++;
-
+        // Increment particle count
+        pS->cellList[cellIdx].nParticles++;
     }
 }
 
 
+// Build list of neighbor cells for each cell (including self)
 void getNeighborList(systemSI *pS) {
 
-    double cellSize = pS -> cellSize;
-    int nCells = pS -> nCells;
-    int d = pS -> d;
-    int z = pS -> z;
+    double cellSize = pS->cellSize;
+    int nCells = pS->nCells;
+    int d = pS->d;
+    int z = pS->z;
 
     for (int cellIdx = 0; cellIdx < nCells * nCells; cellIdx++) {
         
@@ -158,13 +171,15 @@ void getNeighborList(systemSI *pS) {
         int j = cellIdx / nCells;
 
         int n = 0;
+        // Loop over 3x3 grid of neighboring cells
         for (int dj = -1; dj <= 1; dj++) {
             for (int di = -1; di <= 1; di++) {
 
+                // Apply periodic boundary conditions
                 int ni = (i + di + nCells) % nCells;
                 int nj = (j + dj + nCells) % nCells;
 
-                pS -> neighborCell[z * cellIdx + n] = ni + nj * nCells;
+                pS->neighborCell[z * cellIdx + n] = ni + nj * nCells;
                 n++;
             }
         }
@@ -172,6 +187,7 @@ void getNeighborList(systemSI *pS) {
 }
 
 
+// Update particle positions using Ornstein-Uhlenbeck process with periodic boundaries
 void iteration(systemSI *pS) {
     int d = pS->d;
     double *x  = pS->x;
@@ -181,12 +197,12 @@ void iteration(systemSI *pS) {
     double sigma = pS->sigma;
     double L = L_BOX;
 
-    // Parámetros del proceso de Ornstein-Uhlenbeck (precalculados una sola vez)
+    // Precompute OU process parameters
     double exp_md = exp(-alpha * dt);
     double tmp = 1.0 - exp(-2.0 * alpha * dt);
     double var_factor = sigma * sqrt(tmp / (2.0 * alpha));
 
-    // Loop optimizado
+    // Update each particle position
     for (int idx = 0; idx < N; idx++) {
         int base_idx = d * idx;
         
@@ -197,12 +213,11 @@ void iteration(systemSI *pS) {
             double eq  = x0[pos];
             double z   = gasdev_mu_sigma(0.0, 1.0);
 
-            // Cálculo de nueva posición
+            // Use minimum image convention for periodic boundaries
             double diff = minImage(cur, eq);
             double newx = eq + diff * exp_md + var_factor * z;
 
-            // Condiciones periódicas optimizadas (estilo Pac-Man)
-            // Usamos fmod para mayor robustez
+            // Apply periodic boundary conditions (wrap around)
             newx = fmod(newx, L);
             if (newx < 0.0) newx += L;
 
@@ -212,9 +227,9 @@ void iteration(systemSI *pS) {
 }
 
 
-
+// Version 0: Independent state transitions (no spatial interactions)
 void propagation_v00(systemSI *pS, double beta, double lambda) {
-    // Copia de estado actual
+    // Copy current state to buffer
     memcpy(pS->fakeState, pS->state, pS->memoryState);
 
     int *state     = pS->state;
@@ -222,73 +237,74 @@ void propagation_v00(systemSI *pS, double beta, double lambda) {
     double dt = pS->dt;
 
     for (int idx = 0; idx < N; idx++) {
-        double r = uniform_pos();  // número aleatorio uniforme en [0,1)
+        double r = uniform_pos();
 
         if (state[idx] == 0) {
-            // Infectado -> Susceptible con tasa λ
+            // Infected -> Susceptible with rate lambda
             fakeState[idx] = (r < lambda * dt) ? 1 : 0;
         } else {
-            // Susceptible -> Infectado con tasa β
+            // Susceptible -> Infected with rate beta
             fakeState[idx] = (r < beta * dt) ? 0 : 1;
         }
     }
 
-    // Actualiza el estado del sistema
+    // Update system state
     memcpy(state, fakeState, pS->memoryState);
 }
 
 
+// Version 1: Infection rate proportional to number of infected neighbors
 void propagation_v01(systemSI *pS, double beta, double lambda) {
 
-    memcpy(pS -> fakeState, pS -> state, pS -> memoryState);
+    memcpy(pS->fakeState, pS->state, pS->memoryState);
     
     int *state     = pS->state;
     int *fakeState = pS->fakeState;
     
     double dt = pS->dt;
-    double rc = pS -> rc;
+    double rc = pS->rc;
     double L  = L_BOX;
     
-    int d = pS -> d;
-    int z = pS -> z;
+    int d = pS->d;
+    int z = pS->z;
     
-    double *x  = pS -> x;
-    int nCells = pS -> nCells;
+    double *x  = pS->x;
+    int nCells = pS->nCells;
     
-    // Actualizar lista de celdas
+    // Update cell lists
     getCellIndex(pS);
     
     for (int idx = 0; idx < N; idx++) {
         double r = uniform_pos();
         
         if (state[idx] == 0) {
-            // Infectado -> Susceptible con tasa λ
+            // Infected -> Susceptible with rate lambda
             fakeState[idx] = (r < lambda * dt) ? 1 : 0;
         } else {
-            // Susceptible: contar vecinos infectados
+            // Susceptible: count infected neighbors
             int num_infected_neighbors = 0;
             
             double xi = x[d * idx + 0];
             double yi = x[d * idx + 1];
             
-            // Encontrar celda de la partícula i
-            int ix = ((int)(xi / pS -> cellSize)) % nCells;
-            int iy = ((int)(yi / pS -> cellSize)) % nCells;
+            // Find particle's cell
+            int ix = ((int)(xi / pS->cellSize)) % nCells;
+            int iy = ((int)(yi / pS->cellSize)) % nCells;
             
             if (ix < 0) ix += nCells;
             if (iy < 0) iy += nCells;
             
             int cellIdx = iy * nCells + ix;
             
-            // Buscar solo en celdas vecinas
+            // Search in neighboring cells only
             for (int n = 0; n < z; n++) {
                 int neighborCellIdx = pS->neighborCell[z * cellIdx + n];
                 
-                for (int p = 0; p < pS -> cellList[neighborCellIdx].nParticles; p++) {
-                    int jdx = pS -> cellList[neighborCellIdx].particleIndex[p];
+                for (int p = 0; p < pS->cellList[neighborCellIdx].nParticles; p++) {
+                    int jdx = pS->cellList[neighborCellIdx].particleIndex[p];
                     
                     if (jdx == idx) continue;
-                    if (state[jdx] != 0) continue; // Solo infectados
+                    if (state[jdx] != 0) continue; // Only count infected
                     
                     double xj = x[d * jdx + 0];
                     double yj = x[d * jdx + 1];
@@ -303,7 +319,7 @@ void propagation_v01(systemSI *pS, double beta, double lambda) {
                 }
             }
             
-            // Infección proporcional a vecinos infectados
+            // Infection probability proportional to infected neighbors
             double infection_prob = 1.0 - exp(-beta * num_infected_neighbors * dt);
             fakeState[idx] = (r < infection_prob) ? 0 : 1;
         }
@@ -313,6 +329,7 @@ void propagation_v01(systemSI *pS, double beta, double lambda) {
 }
 
 
+// Version 2: Distance-dependent infection probability exp(-lambda*r)
 void propagation_v02(systemSI *pS, double beta, double lambda) {
     memcpy(pS->fakeState, pS->state, pS->memoryState);
     
@@ -325,30 +342,30 @@ void propagation_v02(systemSI *pS, double beta, double lambda) {
     double *x = pS->x;
     int nCells = pS->nCells;
     
-    // Actualizar lista de celdas
+    // Update cell lists
     getCellIndex(pS);
     
     for (int idx = 0; idx < N; idx++) {
         double r_random = uniform_pos();
         
         if (state[idx] == 0) {
-            // Infectado -> Susceptible con tasa β (recuperación)
+            // Infected -> Susceptible with rate beta (recovery)
             fakeState[idx] = (r_random < beta * dt) ? 1 : 0;
         } else {
-            // Susceptible: calcular probabilidad de NO infectarse (productoria)
+            // Susceptible: calculate probability of NOT being infected (product)
             double prob_no_infection = 1.0;
             
             double xi = x[d * idx + 0];
             double yi = x[d * idx + 1];
             
-            // Encontrar celda
+            // Find particle's cell
             int ix = ((int)(xi / pS->cellSize)) % nCells;
             int iy = ((int)(yi / pS->cellSize)) % nCells;
             if (ix < 0) ix += nCells;
             if (iy < 0) iy += nCells;
             int cellIdx = iy * nCells + ix;
             
-            // Buscar vecinos infectados
+            // Search for infected neighbors
             for (int n = 0; n < z; n++) {
                 int neighborCellIdx = pS->neighborCell[z * cellIdx + n];
                 
@@ -356,7 +373,7 @@ void propagation_v02(systemSI *pS, double beta, double lambda) {
                     int jdx = pS->cellList[neighborCellIdx].particleIndex[p];
                     
                     if (jdx == idx) continue;
-                    if (state[jdx] != 0) continue; // Solo infectados
+                    if (state[jdx] != 0) continue; // Only infected
                     
                     double xj = x[d * jdx + 0];
                     double yj = x[d * jdx + 1];
@@ -366,19 +383,19 @@ void propagation_v02(systemSI *pS, double beta, double lambda) {
                     double dist = sqrt(dx*dx + dy*dy);
                     
                     if (dist < rc) {
-                        // P(este vecino me infecta) = exp(-λ*r) * dt
+                        // P(this neighbor infects me) = exp(-lambda*r) * dt
                         double p_infection_from_j = exp(-lambda * dist) * dt;
                         
-                        // P(este vecino NO me infecta)
+                        // P(this neighbor does NOT infect me)
                         double p_no_infection_from_j = 1.0 - p_infection_from_j;
                         
-                        // Productoria
+                        // Multiply in product
                         prob_no_infection *= p_no_infection_from_j;
                     }
                 }
             }
             
-            // P(infectarse) = 1 - P(no infectarse)
+            // P(infection) = 1 - P(no infection)
             double infection_prob = 1.0 - prob_no_infection;
             
             fakeState[idx] = (r_random < infection_prob) ? 0 : 1;
@@ -388,24 +405,25 @@ void propagation_v02(systemSI *pS, double beta, double lambda) {
     memcpy(state, fakeState, pS->memoryState);
 }
 
+
+// Compute minimum image distance for periodic boundary conditions
 double minImage(double xi, double xj){
     double xij = xi - xj;
     return xij - L_BOX * round(xij / L_BOX); 
 }
 
 
+// Debug function: verify particle assignment to cells
 void verifyParticlesInCells(systemSI *pS) {
-    printf("\n=== VERIFICACIÓN: PARTÍCULAS POR CELDA ===\n\n");
+    printf("\n=== VERIFICATION: PARTICLES PER CELL ===\n\n");
     
-    int nCells = pS -> nCells;
+    int nCells = pS->nCells;
     int total = 0;
     for (int cellIdx = 0; cellIdx < nCells * nCells; cellIdx++) {
-        int nParticles = pS -> cellList[cellIdx].nParticles;
-        printf("celll %d: %d particles\n", cellIdx, nParticles);
+        int nParticles = pS->cellList[cellIdx].nParticles;
+        printf("cell %d: %d particles\n", cellIdx, nParticles);
         total += nParticles;
     }
 
-    printf("%d\n", total);
-
-
+    printf("Total: %d\n", total);
 }
