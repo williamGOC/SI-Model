@@ -136,10 +136,6 @@ Three versions available in `system.c`:
 - **Standard libraries**: `stdio.h`, `stdlib.h`, `math.h`, `time.h`
 - **OpenGL** (visualization only): `GL/gl.h`, `GL/glu.h`, `GL/glut.h`
 
-## License
-
-[Add your license here]
-
 ## Authors
 - Matheus ...
 - Marcelo H. Schwade (IFUSP)
