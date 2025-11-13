@@ -15,6 +15,7 @@ typedef struct {
     size_t memoryState;        // Size of state arrays
     size_t memoryNeighborCell; // Size of neighbor cell array
     size_t memoryCellList;     // Size of cell list array
+    size_t memoryFlag;         // Size for flags array
     
     // Particle data
     double *x;          // Current positions [x1, y1, x2, y2, ...]
@@ -22,6 +23,7 @@ typedef struct {
     int *index;         // Particle indices
     int *state;         // Current epidemic state (0=Infected, 1=Susceptible)
     int *fakeState;     // Temporary state buffer for updates
+    int *flag;          // Flags for re-infection
     
     // Spatial partitioning structures
     cell *cellList;     // Array of cells for spatial hashing
@@ -36,6 +38,8 @@ typedef struct {
     int nCells;         // Number of cells per dimension
     int d;              // Spatial dimension (typically 2)
     int z;              // Number of neighbor cells (including self)
+    int idx0;           // Index of the first infected particle
+
 } systemSI;
 
 // System initialization and cleanup
@@ -55,6 +59,8 @@ void iteration(systemSI *);          // Update particle positions (OU process)
 void propagation_v00(systemSI *, double, double);  // Update epidemic states (version 0)
 void propagation_v01(systemSI *, double, double);  // Update epidemic states (version 1)
 void propagation_v02(systemSI *, double, double);  // Update epidemic states (version 2)
+int propagation_v03(systemSI *, double, double);   // Update epidemic states (version 3)
+int propagation_v04(systemSI *, double, double);   // Update epidemic states (version 3)
 
 // Utility functions
 void verifyParticlesInCells(systemSI *);  // Debug: verify cell assignment

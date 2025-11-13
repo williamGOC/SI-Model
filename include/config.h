@@ -37,6 +37,11 @@
 #define SIGMA 0.5
 #endif
 
+// Number of realizations
+#ifndef REALIZATION
+#define REALIZATION 1000
+#endif
+
 // Time step for integration
 #ifndef DT
 #define DT 0.01

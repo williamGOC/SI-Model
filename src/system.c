@@ -23,6 +23,7 @@ systemSI *makeSystem(double rc, double dt, double alpha, double sigma, int d, in
     pS->memoryX = d * N * sizeof(double);
     pS->memoryIndex = N * sizeof(int);
     pS->memoryState = N * sizeof(int);
+    pS->memoryFlag = N * sizeof(int);
     pS->memoryNeighborCell = z * N_BOX * N_BOX * sizeof(int);
     pS->memoryCellList = N_BOX * N_BOX * sizeof(cell);
 
@@ -42,7 +43,8 @@ systemSI *makeSystem(double rc, double dt, double alpha, double sigma, int d, in
     // Allocate state arrays
     pS->state     = (int *)malloc(pS->memoryState);
     pS->fakeState = (int *)malloc(pS->memoryState);
-    assert(pS->state != NULL && pS->fakeState != NULL);
+    pS->flag      = (int *)malloc(pS->memoryFlag);
+    assert(pS->state != NULL && pS->fakeState != NULL && pS->flag != NULL);
 
     // Set initial epidemic states
     initialState(pS);
@@ -79,6 +81,7 @@ void destroySystem(systemSI *pS) {
     free(pS->x0);
     free(pS->index);
     free(pS->state);
+    free(pS->flag);
     free(pS->fakeState);
     free(pS->neighborCell);
 
@@ -112,13 +115,16 @@ void initialState(systemSI *pS) {
     // All particles start as susceptible (state=1)
     for (int i = 0; i < N; i++) {
         pS->state[i] = 1;
+        pS->flag[i]=0;
     }
 
     // Choose one random particle to be infected (state=0)
     int j = (int)(((double)rand() / (double)RAND_MAX) * N);
     if (j < 0) j = 0;
     if (j >= N) j = N-1;
-    pS->state[j] = 0;
+    pS -> state[j] = 0;
+    pS->flag[j]=1;
+    pS-> idx0 = j;
 }
 
 
@@ -403,6 +409,173 @@ void propagation_v02(systemSI *pS, double beta, double lambda) {
     }
     
     memcpy(state, fakeState, pS->memoryState);
+}
+
+
+// Version 3: Distance-dependent infection probability exp(-lambda*r) with infected count
+// OPTIMIZED: Only search in neighbor cells of idx0
+int propagation_v03(systemSI *pS, double beta, double lambda) {
+    memcpy(pS->fakeState, pS->state, pS->memoryState);
+    
+    int *state     = pS->state;
+    int *fakeState = pS->fakeState;
+    double dt = pS->dt;
+    double rc = pS->rc;
+    int d = pS->d;
+    int z = pS->z;
+    double *x = pS->x;
+    int nCells = pS->nCells;
+    int idx0 = pS->idx0;
+    
+    // Update cell lists
+    getCellIndex(pS);
+    
+    // Step 1: Update recovery for all infected particles
+    for (int idx = 0; idx < N; idx++) {
+        if (state[idx] == 0) {
+            // Infected -> Susceptible with rate beta (recovery)
+            double r_random = uniform_pos();
+            fakeState[idx] = (r_random < beta * dt) ? 1 : 0;
+        }
+    }
+    
+    // Step 2: Find idx0's cell
+    double x0 = x[d * idx0 + 0];
+    double y0 = x[d * idx0 + 1];
+    
+    int ix0 = ((int)(x0 / pS->cellSize)) % nCells;
+    int iy0 = ((int)(y0 / pS->cellSize)) % nCells;
+    if (ix0 < 0) ix0 += nCells;
+    if (iy0 < 0) iy0 += nCells;
+    int cellIdx0 = iy0 * nCells + ix0;
+    
+    // Step 3: Search only in neighbor cells of idx0
+    if (state[idx0] == 0) {  // Only if idx0 is infected
+        for (int n = 0; n < z; n++) {
+            int neighborCellIdx = pS->neighborCell[z * cellIdx0 + n];
+            
+            for (int p = 0; p < pS->cellList[neighborCellIdx].nParticles; p++) {
+                int idx = pS->cellList[neighborCellIdx].particleIndex[p];
+                
+                if (idx == idx0) continue;              // Skip idx0 itself
+                if (fakeState[idx] != 1) continue;      // Only susceptibles (state == 1)
+                
+                // Calculate distance
+                double xi = x[d * idx + 0];
+                double yi = x[d * idx + 1];
+                double dx = minImage(x0, xi);
+                double dy = minImage(y0, yi);
+                double dist = sqrt(dx*dx + dy*dy);
+                
+                if (dist < rc) {
+                    // P(infection) = exp(-lambda*r) * dt
+                    double infection_prob = exp(-lambda * dist) * dt;
+                    double r_random = uniform_pos();
+                    
+                    if (r_random < infection_prob) {
+                        fakeState[idx] = 0;  // Becomes infected
+                    }
+                }
+            }
+        }
+    }
+    
+    memcpy(state, fakeState, pS->memoryState);
+    
+    // Count infected particles (state == 0)
+    int nInfected = 0;
+    for (int idx = 0; idx < N; idx++) {
+        if (state[idx] == 0) {
+            nInfected++;
+        }
+    }
+    
+    return nInfected;
+}
+
+
+// Version 3: Distance-dependent infection probability exp(-lambda*r)
+// OPTIMIZED: Only search in neighbor cells of idx0
+// Uses flag[i] to count each particle only once (no reinfection counts)
+int propagation_v04(systemSI *pS, double beta, double lambda) {
+    memcpy(pS->fakeState, pS->state, pS->memoryState);
+    
+    int *state     = pS->state;
+    int *fakeState = pS->fakeState;
+    int *flag      = pS->flag;      // Track if particle was ever infected (0=never, 1=ever)
+    double dt = pS->dt;
+    double rc = pS->rc;
+    int d = pS->d;
+    int z = pS->z;
+    double *x = pS->x;
+    int nCells = pS->nCells;
+    int idx0 = pS->idx0;
+    
+    // Update cell lists
+    getCellIndex(pS);
+    
+    // Step 1: Update recovery for all infected particles
+    for (int idx = 0; idx < N; idx++) {
+        if (state[idx] == 0) {
+            // Infected -> Susceptible with rate beta (recovery)
+            double r_random = uniform_pos();
+            fakeState[idx] = (r_random < beta * dt) ? 1 : 0;
+        }
+    }
+    
+    // Step 2: Find idx0's cell
+    double x0 = x[d * idx0 + 0];
+    double y0 = x[d * idx0 + 1];
+    
+    int ix0 = ((int)(x0 / pS->cellSize)) % nCells;
+    int iy0 = ((int)(y0 / pS->cellSize)) % nCells;
+    if (ix0 < 0) ix0 += nCells;
+    if (iy0 < 0) iy0 += nCells;
+    int cellIdx0 = iy0 * nCells + ix0;
+    
+    // Step 3: Search only in neighbor cells of idx0
+    if (state[idx0] == 0) {  // Only if idx0 is infected
+        for (int n = 0; n < z; n++) {
+            int neighborCellIdx = pS->neighborCell[z * cellIdx0 + n];
+            
+            for (int p = 0; p < pS->cellList[neighborCellIdx].nParticles; p++) {
+                int idx = pS->cellList[neighborCellIdx].particleIndex[p];
+                
+                if (idx == idx0) continue;              // Skip idx0 itself
+                if (fakeState[idx] != 1) continue;      // Only susceptibles (state == 1)
+                
+                // Calculate distance
+                double xi = x[d * idx + 0];
+                double yi = x[d * idx + 1];
+                double dx = minImage(x0, xi);
+                double dy = minImage(y0, yi);
+                double dist = sqrt(dx*dx + dy*dy);
+                
+                if (dist < rc) {
+                    // P(infection) = exp(-lambda*r) * dt
+                    double infection_prob = exp(-lambda * dist) * dt;
+                    double r_random = uniform_pos();
+                    
+                    if (r_random < infection_prob) {
+                        fakeState[idx] = 0;              // Becomes infected (state = 0)
+                        flag[idx] = 1;                   // Mark: this particle was EVER infected
+                    }
+                }
+            }
+        }
+    }
+    
+    memcpy(state, fakeState, pS->memoryState);
+    
+    // Return: count total particles that were EVER infected (cumulative, no reinfection counts)
+    int nInfected = 0;
+    for (int idx = 0; idx < N; idx++) {
+        if (flag[idx] == 1) {        // Count only if ever been infected
+            nInfected++;
+        }
+    }
+    
+    return nInfected;
 }
 
 
