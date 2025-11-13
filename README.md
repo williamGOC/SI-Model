@@ -75,6 +75,7 @@ Particles move via an Ornstein-Uhlenbeck process:
 ```bash
 ./move
 ```
+![Simulación del modelo SI](./salida.gif)
 
 **Controls:**
 - `ESC`: Exit
