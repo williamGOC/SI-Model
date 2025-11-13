@@ -142,4 +142,4 @@ Three versions available in `system.c`:
 
 ## Authors
 
-[Add your information here]
+- William G. C. Oropesa
