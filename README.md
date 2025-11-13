@@ -77,7 +77,7 @@ Particles move via an Ornstein-Uhlenbeck process:
 ```
 
 <p align="center">
-  <img src="salida.gif" alt="Simulación del modelo SIS" width="600">
+  <img src="salida.gif" alt="Simulación del modelo SIS" width="500">
 </p>
 
 **Controls:**
