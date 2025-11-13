@@ -33,6 +33,10 @@ GLint pause = 1;     // Pause/resume simulation
 GLint nView = 1;     // Number of available views
 GLint gridView = 0;  // Show/hide cell grid
 
+GLint frame_counter = 0;
+GLint getFrame = 0;
+GLint frame_stride = 1;  // guardar un frame cada 1 pasos
+
 void saveFrameToPPM(int frame) {
     unsigned char *pixels = (unsigned char *)malloc(3 * windowWidth * windowHeight);
     if (!pixels) {
@@ -189,6 +193,11 @@ void display_v00() {
     // Draw particles
     drawParticlesAsCircles();
 
+    // guardar frames cada cierto número de pasos
+    if (frame_counter % frame_stride == 0 && getFrame)
+        saveFrameToPPM(frame_counter / frame_stride);
+    frame_counter++;
+
     glutSwapBuffers();
 }
 
@@ -333,6 +342,10 @@ void keyboard(unsigned char key, int x, int y) {
         case 'g': case 'G': // Toggle grid view
             gridView = !gridView;
             break;
+        
+        case 'x': case 'X': // Toggle grid view
+            getFrame = !getFrame;
+            break;
 
         default:
             break;
@@ -370,6 +383,7 @@ int main(int argc, char **argv) {
     glutInitWindowSize(windowWidth, windowHeight);
     glutCreateWindow("Particle Simulation - SIS Epidemic Model");
 
+    system("mkdir -p frames"); // crea carpeta
     initOpenGL(argc, argv);
 
     // Register callback functions

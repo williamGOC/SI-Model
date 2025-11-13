@@ -76,6 +76,8 @@ Particles move via an Ornstein-Uhlenbeck process:
 ./move
 ```
 
+[![Simulación](./salida.gif)](./video.mp4)
+
 **Controls:**
 - `ESC`: Exit
 - `p`: Pause/resume
