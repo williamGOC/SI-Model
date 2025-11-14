@@ -13,7 +13,7 @@ SIGMA_MAX=${6:-33.0}    # Maximum sigma
 N_STEPS=${7:-20}        # Number of logarithmic steps
 DT=${8:-0.01}           # Time step
 BETA=${9:-0.2}          # Recovery rate (I -> S)
-LAMBDA=${10:-1.0}       # Spatial decay of infection
+LAMBDA=${10:-2.0}       # Spatial decay of infection
 REALIZ=${11:-1000}      # Number of realizations per sigma
 
 # Compiler settings

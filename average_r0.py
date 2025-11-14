@@ -40,6 +40,7 @@ def read_last_column(filepath):
     """
     Lee archivo .dat y extrae la última columna (numérica)
     Salta líneas de comentarios
+    Resta 1 a cada valor (R0 - 1)
     """
     data = []
     
@@ -56,7 +57,8 @@ def read_last_column(filepath):
                     try:
                         # Extraer última columna
                         last_value = float(parts[-1])
-                        data.append(last_value)
+                        # Restar 1 a R0
+                        data.append(last_value - 1)
                     except (ValueError, IndexError):
                         continue
     except Exception as e:

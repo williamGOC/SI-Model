@@ -31,7 +31,7 @@ p_bot = mpl_bot / ysize
 
 # Salida
 set terminal epslatex size xsize,ysize
-epsfile='R0_vs_sigma2.eps'
+epsfile='R0_vs_sigma2_var_beta_lambda1.eps'
 set output epsfile
 
 set border linewidth 1.5
@@ -47,27 +47,29 @@ set rmargin at screen p1_right
 set tmargin at screen p_top
 set bmargin at screen p_bot
 
-set key samplen 1 spacing 1.2 font ",15" at graph 0.95, 0.95
+set key samplen 1 spacing 1.2 font ",15" at graph 0.35, 0.95
 set xlabel '\Large{$\sigma^{2}$}'
-set ylabel '\Large{$R_{0}$}' offset 0.1,0.1
+set ylabel '\Large{$R_{0}$}' offset 0.1,0.1 rotate by 0
 
 set format x "$10^{%T}$"
 
 set logscale x
 
-#set xrange [0:0.12]
+set xrange [:30]
 set yrange [0:]
 
 
-#set label 1 '$\tau_p=1$' at graph 0.7, 0.25
+set label 1 '$\lambda=1.0$' at graph 0.4, 0.85
+set label 2 '$\alpha=1.0$' at graph 0.4, 0.775
 
 set style fill solid 0.3 noborder
 
-plot "../R0/resultados_beta_sigma.dat" u (($1==0.2)?($2*$2):(NaN)):3:4 w yerrorline pt 5 ps 1.3 lw 2 lc rgb 'red' title '$\beta=0.2$',\
-     "../R0/resultados_beta_sigma.dat" u (($1==0.6)?($2*$2):(NaN)):3:4 w yerrorline pt 7 ps 1.3 lw 2 lc rgb 'blue' title '$0.6$',\
-     "../R0/resultados_beta_sigma.dat" u (($1==1.0)?($2*$2):(NaN)):3:4 w yerrorline pt 9 ps 1.3 lw 2 lc rgb 'magenta' title '$1.0$',\
-     #"./diagram_LX32.dat" u (($3==32 && $4==0.200)?($5):(NaN)):6 w lp pt 13 ps 1.3 lw 2 lc rgb 'olive' title '$0.20$',\
-     #"./STRAIN_X/MEAN_VALUES.dat" u (($3==256)?($5):(NaN)):9 w p pt 15 ps 1.3 lw 2 lc rgb 'cyan' title '$256$';
+plot "< sort -k6 -n -k7 -n -k5 -n ../R0/MEAN_VALUES.dat" u (($6==0.2 && $7==1.0 && $4==1.0)?($5 * $5):(NaN)):8:9 w yerrorlines pt 5 ps 1.3 lw 2 lc rgb 'red' title '$\beta=0.2$',\
+     "< sort -k6 -n -k7 -n -k5 -n ../R0/MEAN_VALUES.dat" u (($6==0.6 && $7==1.0 && $4==1.0)?($5 * $5):(NaN)):8:9 w yerrorlines pt 7 ps 1.3 lw 2 lc rgb 'blue' title '$0.6$',\
+     "< sort -k6 -n -k7 -n -k5 -n ../R0/MEAN_VALUES.dat" u (($6==0.8 && $7==1.0 && $4==1.0)?($5 * $5):(NaN)):8:9 w yerrorlines pt 9 ps 1.3 lw 2 lc rgb 'magenta' title '$0.8$',\
+     "< sort -k6 -n -k7 -n -k5 -n ../R0/MEAN_VALUES.dat" u (($6==1.0 && $7==1.0 && $4==1.0)?($5 * $5):(NaN)):8:9 w yerrorlines pt 11 ps 1.3 lw 2 lc rgb 'olive' title '$1.0$',\
+     "< sort -k6 -n -k7 -n -k5 -n ../R0/MEAN_VALUES.dat" u (($6==10.0 && $7==1.0 && $4==1.0)?($5 * $5):(NaN)):8:9 w yerrorlines pt 15 ps 1.3 lw 2 lc rgb 'cyan' title '$10.0$',\
+     1 w l lw 2 dashtype 3 lc 'black' notitle;
 
 
 ########### PANEL CENTRAL (Nz) ###########
