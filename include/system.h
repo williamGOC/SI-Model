@@ -32,8 +32,8 @@ typedef struct {
     // System parameters
     double dt;          // Time step
     double rc;          // Cutoff radius for interactions
-    double alpha;       // OU process relaxation rate
-    double sigma;       // OU process noise strength
+    double *alpha;       // OU process relaxation rate
+    double *sigma;      // OU process noise strength
     double cellSize;    // Size of each spatial cell
     int nCells;         // Number of cells per dimension
     int d;              // Spatial dimension (typically 2)
@@ -63,7 +63,14 @@ int propagation_v03(systemSI *, double, double);   // Update epidemic states (ve
 int propagation_v04(systemSI *, double, double);   // Update epidemic states (version 3)
 
 // Utility functions
-void verifyParticlesInCells(systemSI *);  // Debug: verify cell assignment
-double minImage(double, double);          // Compute minimum image distance (PBC)
+void verifyParticlesInCells(systemSI *);        // Debug: verify cell assignment
+double minImage(double, double);                // Compute minimum image distance (PBC)
+void resetInfection(systemSI *);                // Reset the infection and set each flag to 0
+
+void randomGaussianSigma(systemSI *, double);
+void uniformSigma(systemSI *, double);
+
+void randomGaussianAlpha(systemSI *, double);
+void uniformAlpha(systemSI *, double);
 
 #endif // __SYSTEM_H__

@@ -11,8 +11,6 @@ systemSI *makeSystem(double rc, double dt, double alpha, double sigma, int d, in
 
     // Set system parameters
     pS->rc = rc;
-    pS->alpha = alpha;
-    pS->sigma = sigma;
     pS->dt = dt;
     pS->nCells = N_BOX;
     pS->cellSize = L_BOX / N_BOX;
@@ -26,6 +24,13 @@ systemSI *makeSystem(double rc, double dt, double alpha, double sigma, int d, in
     pS->memoryFlag = N * sizeof(int);
     pS->memoryNeighborCell = z * N_BOX * N_BOX * sizeof(int);
     pS->memoryCellList = N_BOX * N_BOX * sizeof(cell);
+
+    pS -> sigma = (double *)malloc(N * sizeof(double));
+    pS -> alpha = (double *)malloc(N * sizeof(double));
+    assert(pS -> sigma != NULL && pS -> alpha != NULL);
+
+    uniformSigma(pS, sigma);
+    uniformAlpha(pS, alpha);
 
     // Allocate position arrays
     pS->x  = (double *)malloc(pS->memoryX);
@@ -81,9 +86,11 @@ void destroySystem(systemSI *pS) {
     free(pS->x0);
     free(pS->index);
     free(pS->state);
-    free(pS->flag);
-    free(pS->fakeState);
-    free(pS->neighborCell);
+    free(pS -> sigma);
+    free(pS -> alpha);
+    free(pS -> flag);
+    free(pS -> fakeState);
+    free(pS -> neighborCell);
 
     // Free cell list arrays
     if (pS->cellList != NULL) {
@@ -199,17 +206,19 @@ void iteration(systemSI *pS) {
     double *x  = pS->x;
     double *x0 = pS->x0;
     double dt = pS->dt;
-    double alpha = pS->alpha;
-    double sigma = pS->sigma;
+    double *alpha = pS -> alpha;
+    double *sigma = pS -> sigma;
     double L = L_BOX;
 
-    // Precompute OU process parameters
-    double exp_md = exp(-alpha * dt);
-    double tmp = 1.0 - exp(-2.0 * alpha * dt);
-    double var_factor = sigma * sqrt(tmp / (2.0 * alpha));
 
     // Update each particle position
     for (int idx = 0; idx < N; idx++) {
+        
+        // Precompute OU process parameters
+        double exp_md = exp(-alpha[idx] * dt);
+        double tmp = 1.0 - exp(-2.0 * alpha[idx] * dt);
+        double var_factor = sigma[idx] * sqrt(tmp / (2.0 * alpha[idx]));
+        
         int base_idx = d * idx;
         
         for (int mu = 0; mu < d; mu++) {
@@ -585,6 +594,46 @@ double minImage(double xi, double xj){
     return xij - L_BOX * round(xij / L_BOX); 
 }
 
+
+void resetInfection(systemSI *pS) {
+
+    for (int idx = 0; idx < N; idx++) {
+        pS -> state[idx] = 1;
+        pS -> flag[idx] = 0; 
+    }
+    
+}
+
+void uniformSigma(systemSI *pS, double sigma) {
+
+    for (int idx = 0; idx < N; idx++) {
+        pS -> sigma[idx] = sigma; 
+    }
+}
+
+
+void randomGaussianSigma(systemSI *pS, double meanSigma) {
+
+    for (int idx = 0; idx < N; idx++) {
+        pS -> sigma[idx] = gasdev_mu_sigma(meanSigma, 1.0);
+    }
+}
+
+
+void uniformAlpha(systemSI *pS, double alpha) {
+
+    for (int idx = 0; idx < N; idx++) {
+        pS -> alpha[idx] = alpha; 
+    }
+}
+
+
+void randomGaussianAlpha(systemSI *pS, double meanAlpha) {
+
+    for (int idx = 0; idx < N; idx++) {
+        pS -> alpha[idx] = gasdev_mu_sigma(meanAlpha, 1.0);
+    }
+}
 
 // Debug function: verify particle assignment to cells
 void verifyParticlesInCells(systemSI *pS) {

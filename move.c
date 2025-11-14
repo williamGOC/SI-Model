@@ -38,6 +38,9 @@ GLint gridView = 0;  // Show/hide cell grid
 // UI Control panel
 GLint showUI = 1;    // Show/hide UI panel
 
+GLfloat unifSigma = 1;
+GLfloat unifAlpha = 1;
+
 // Button structure
 typedef struct {
     float x, y, width, height;
@@ -258,9 +261,17 @@ void updateParameter(int paramType, int isIncrement) {
     
     // Update system parameters (if applicable)
     if (paramType == 0 && pS != NULL) {
-        pS->alpha = currentAlpha;
+        if (unifAlpha){
+            uniformAlpha(pS, currentAlpha);
+        } else {
+            randomGaussianAlpha(pS, currentAlpha);
+        }
     } else if (paramType == 3 && pS != NULL) {
-        pS->sigma = currentSigma;
+        if (unifSigma){
+            uniformSigma(pS, currentSigma);
+        } else {
+            randomGaussianSigma(pS, currentSigma);
+        }
     }
     
     printf("%s updated to: %.3f\n", paramName, *param);
@@ -301,8 +312,8 @@ void initOpenGL() {
     pS = makeSystem(rc, dt, alpha, sigma, d, z);
 
     // Sync current parameters with system
-    currentAlpha = pS->alpha;
-    currentSigma = pS->sigma;
+    currentAlpha = alpha;
+    currentSigma = sigma;
     currentBeta = BETA;
     currentLambda = LAMBDA;
 
@@ -608,6 +619,20 @@ void keyboard(unsigned char key, int x, int y) {
 
         case 'u': case 'U': // Toggle UI panel
             showUI = !showUI;
+            break;
+
+        case 'd': case 'D':
+            resetInfection(pS);
+            break;
+        
+        case 'e': case 'E':
+            unifSigma = !unifSigma;
+            (unifSigma)? uniformSigma(pS, currentSigma) : randomGaussianSigma(pS, currentSigma); 
+            break;
+
+        case 'a': case 'A':
+            unifAlpha = !unifAlpha;
+            (unifAlpha)? uniformAlpha(pS, currentAlpha) : randomGaussianAlpha(pS, currentAlpha); 
             break;
 
         default:
