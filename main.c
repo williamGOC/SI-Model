@@ -47,8 +47,8 @@ int main() {
     printf("# Susceptibles: %d, Infected: %d\n\n", nS, nI);
     
     // Simulation parameters
-    int nSteps = 10000;
-    int printEvery = 10;
+    int nSteps = 100000;
+    int printEvery = 100;
     
     printf("# Starting simulation...\n");
     printf("# Step\tTime\t\tS\tI\n");

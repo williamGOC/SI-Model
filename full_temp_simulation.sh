@@ -10,8 +10,8 @@ N=${3:-1000}            # Number of particles
 ALPHA=${4:-1.0}         # OU process relaxation rate
 SIGMA=${5:-0.5}         # OU noise
 DT=${6:-0.01}           # Time step
-BETA=${7:-0.9}          # Recovery rate (I -> S)
-REALIZ=${8:-25}         # Number of realizations per lambda
+BETA=${7:-0.3}          # Recovery rate (I -> S)
+REALIZ=${8:-50}         # Number of realizations per lambda
 
 # Array de valores de lambda (especificar manualmente aquí)
 LAMBDAS=(0.5 1.0 1.5 2.0)
@@ -25,7 +25,7 @@ SRC="main.c src/system.c src/random.c"
 OUT="simulation"
 
 # Output base directory
-OUTPUT_BASE="Temp"
+OUTPUT_BASE="SERIE"
 
 # Create output base directory if it doesn't exist
 mkdir -p "$OUTPUT_BASE"
